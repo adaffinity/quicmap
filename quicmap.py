@@ -11,6 +11,7 @@ import warnings
 import ipaddress
 import logging
 import re
+import db
 
 from tqdm.asyncio import tqdm_asyncio
 from aioquic.asyncio import connect
@@ -268,8 +269,21 @@ async def quic_map(endpoint: str, port: int, sem: asyncio.Semaphore) -> list:
 
 
 async def main(endpoints: list[str], ports: list[int]):
+
+    # initiate logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - [%(levelname)s] - %(message)s",
+        handlers=[
+            logging.FileHandler("log/app.log"),
+            logging.StreamHandler()
+        ]
+    )
+
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(exception_handler)
+
+    conn = db.connect_db()
 
     tasks = []
     sem = asyncio.Semaphore(CONCURRENCY)
@@ -281,7 +295,10 @@ async def main(endpoints: list[str], ports: list[int]):
 
     for result in results:
         if result:
+            db.insert_data(conn, result)
             pretty_print(result)
+
+    db.close_db(conn)
 
 
 if __name__ == "__main__":
