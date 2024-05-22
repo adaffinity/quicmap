@@ -41,7 +41,7 @@ def close_db(conn):
     logging.info("Database connection closed.")
 
 def insert_data(conn, result):
-    logging.info("Insert Data Started")
+    #logging.info("Insert Data Started")
     
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     mySql_insert_query = "INSERT INTO quicmap (endpoint, port, ALPN, server_versions, timestamp) VALUES (%s, %s, %s, %s, %s)"
@@ -54,4 +54,4 @@ def insert_data(conn, result):
 
     conn.commit()
     logging.info(cursor.rowcount, "Record inserted successfully into quicmap table")
-    logging.info("Insert Data Ended")
+    #logging.info("Insert Data Ended")

@@ -11,7 +11,11 @@ import warnings
 import ipaddress
 import logging
 import re
+import csv
 import db
+import os.path
+import sys
+
 
 from tqdm.asyncio import tqdm_asyncio
 from aioquic.asyncio import connect
@@ -109,6 +113,17 @@ def parse_hosts(host_spec):
             hosts.append(host_str.strip())
     return hosts
 
+def parse_file(file_spec):
+    hosts = []
+    host_spec = ""
+
+    with open(file_spec, 'r') as f:
+        for line in f:
+            line = line.strip()
+            host_spec = host_spec + ',' + line
+
+    hosts = parse_hosts(host_spec)
+    return hosts
 
 def parse_arguments():
     global TIMEOUT, CONCURRENCY
@@ -117,7 +132,7 @@ def parse_arguments():
         description="quicmap.py - script that does QUIC scanning"
     )
     parser.add_argument(
-        "hosts", help="The target host(s), comma separated hosts or IP range(s)"
+        "--hosts", help="The target host(s), comma separated hosts or IP range(s)", required=False
     )
     parser.add_argument(
         "-p",
@@ -140,16 +155,37 @@ def parse_arguments():
         default=50,
         help="Number of concurrent connections to spawn. Default is 50.",
     )
+    parser.add_argument(
+        "-f",
+        "--file",
+        required=False,
+        type=str,
+        help="File containing target host(s), one host or IP range(s) per line",
+    )
+
     args = parser.parse_args()
+
+    if (args.hosts is None and args.file is None):
+        print("quicmap.py: error: the following arguments are conditionally required: hosts or file")
+        exit(1)
 
     host_spec = args.hosts
     port_spec = args.ports
+    file_spec = args.file
     TIMEOUT = args.timeout
     CONCURRENCY = args.concurrency
 
-    hosts = parse_hosts(host_spec)
+    if (file_spec is None):
+        hosts = parse_hosts(host_spec)
+    else:
+        if os.path.exists(file_spec):
+            hosts = parse_file(file_spec)
+        else:
+            print("quicmap.py: error: the file does not exists")
+            exit(1)
+        
     ports = parse_ports(port_spec)
-
+    
     logging.info("Hosts: ", hosts)
     logging.info("Ports: ", ports)
 
@@ -269,17 +305,6 @@ async def quic_map(endpoint: str, port: int, sem: asyncio.Semaphore) -> list:
 
 
 async def main(endpoints: list[str], ports: list[int]):
-
-    # initiate logger
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - [%(levelname)s] - %(message)s",
-        handlers=[
-            logging.FileHandler("log/app.log"),
-            logging.StreamHandler()
-        ]
-    )
-
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(exception_handler)
 
@@ -302,5 +327,16 @@ async def main(endpoints: list[str], ports: list[int]):
 
 
 if __name__ == "__main__":
+    # initiate logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - [%(levelname)s] - %(message)s",
+        handlers=[
+            logging.FileHandler("log/app.log"),
+            logging.StreamHandler()
+        ]
+    )
+    logging.info("quicmap Started")
     hosts, ports = parse_arguments()
     asyncio.run(main(hosts, ports))
+    logging.info("quicmap Ended")
