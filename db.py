@@ -1,5 +1,4 @@
 # db.py
-import datetime
 import logging
 import mysql.connector
 import os
