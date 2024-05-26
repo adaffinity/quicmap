@@ -22,8 +22,10 @@ DB_PASSWORD=os.environ['DB_PASSWORD']
 DB_DATABASE=os.environ['DB_DATABASE']
 DB_PORT=os.environ['DB_PORT']
 
+logger = logging.getLogger()
+
 def connect_db():
-    logging.info("Connecting to the database...")
+    logger.info("Connecting to the database...")
     conn = mysql.connector.connect(
         host=DB_HOST,
         user=DB_USERNAME,
@@ -32,16 +34,16 @@ def connect_db():
         port=DB_PORT,
         allow_local_infile=True  # Enable local infile loading
     )
-    logging.info("Database connection established.")
+    logger.info("Database connection established.")
     return conn
 
 def close_db(conn):
-    logging.info("Closing the database...")
+    logger.info("Closing the database...")
     conn.close
-    logging.info("Database connection closed.")
+    logger.info("Database connection closed.")
 
 def insert_data(conn, result):
-    #logging.info("Insert Data Started")
+    #logger.info("Insert Data Started")
     
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     mySql_insert_query = "INSERT INTO quicmap (endpoint, port, ALPN, server_versions, timestamp) VALUES (%s, %s, %s, %s, %s)"
@@ -51,7 +53,7 @@ def insert_data(conn, result):
         for server_versions in result['server_versions']:
             data = (result['endpoint'], result['port'], ALPN, server_versions, timestamp)
             cursor.execute(mySql_insert_query, data)
+            logger.info(f"{cursor.rowcount} Record inserted successfully into quicmap table")
 
     conn.commit()
-    logging.info(cursor.rowcount, "Record inserted successfully into quicmap table")
-    #logging.info("Insert Data Ended")
+    #logger.info("Insert Data Ended")

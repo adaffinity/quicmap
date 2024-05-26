@@ -15,7 +15,8 @@ import csv
 import db
 import os.path
 import sys
-
+import logging.handlers
+import queue
 
 from tqdm.asyncio import tqdm_asyncio
 from aioquic.asyncio import connect
@@ -23,6 +24,9 @@ from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.logger import QuicLogger
 from aioquic.quic.configuration import QuicConfiguration
 from cryptography.utils import CryptographyDeprecationWarning
+from logging.handlers import QueueHandler
+from logging.handlers import QueueListener
+from logging.handlers import TimedRotatingFileHandler
 
 warnings.filterwarnings(action="ignore", category=CryptographyDeprecationWarning)
 
@@ -122,6 +126,9 @@ def parse_file(file_spec):
             line = line.strip()
             host_spec = host_spec + ',' + line
 
+    if host_spec:
+        host_spec = host_spec[1:]
+
     hosts = parse_hosts(host_spec)
     return hosts
 
@@ -186,8 +193,8 @@ def parse_arguments():
         
     ports = parse_ports(port_spec)
     
-    logging.info("Hosts: ", hosts)
-    logging.info("Ports: ", ports)
+    logger.info(f"Hosts: {hosts}")
+    logger.info(f"Ports: {ports}")
 
     return hosts, ports
 
@@ -195,7 +202,7 @@ def parse_arguments():
 def exception_handler(loop, context):
     exception = context["exception"]
     message = context["message"]
-    logging.info(f"Task failed, msg={message}, exception={exception}")
+    logger.exception(f"Task failed, msg={message}, exception={exception}")
 
 
 def pretty_print(item: dict):
@@ -321,22 +328,29 @@ async def main(endpoints: list[str], ports: list[int]):
     for result in results:
         if result:
             db.insert_data(conn, result)
-            pretty_print(result)
+            logger.info(result)
+            #pretty_print(result)
 
     db.close_db(conn)
 
 
 if __name__ == "__main__":
     # initiate logger
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - [%(levelname)s] - %(message)s",
-        handlers=[
-            logging.FileHandler("log/app.log"),
-            logging.StreamHandler()
-        ]
-    )
-    logging.info("quicmap Started")
+    logFormatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(message)s")
+    
+    log_queue = queue.Queue()
+    queue_handler = QueueHandler(log_queue)  # Non-blocking handler.
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(queue_handler) # Attached to the root logger.
+
+    handler = TimedRotatingFileHandler('log/app.log', when='midnight', backupCount=10) # The blocking handler.
+    handler.setFormatter(logFormatter)
+    listener = QueueListener(log_queue, handler) # Sitting comfortably in its own thread, isolated from async code.
+    listener.start()
+
+    logger.info("quicmap Started")
     hosts, ports = parse_arguments()
     asyncio.run(main(hosts, ports))
-    logging.info("quicmap Ended")
+    logger.info("quicmap Ended")
