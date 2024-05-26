@@ -327,9 +327,9 @@ async def main(endpoints: list[str], ports: list[int]):
 
     for result in results:
         if result:
-            db.insert_data(conn, result)
             logger.info(result)
-            #pretty_print(result)
+            db.insert_data(conn, result)
+            pretty_print(result)
 
     db.close_db(conn)
 
