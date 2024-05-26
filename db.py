@@ -1,10 +1,8 @@
 # db.py
 import datetime
-import glob
 import logging
 import mysql.connector
 import os
-import pandas as pd
 
 from datetime import datetime
 from dotenv import find_dotenv
@@ -43,8 +41,6 @@ def close_db(conn):
     logger.info("Database connection closed.")
 
 def insert_data(conn, result):
-    #logger.info("Insert Data Started")
-    
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     mySql_insert_query = "INSERT INTO quicmap (endpoint, port, ALPN, server_versions, timestamp) VALUES (%s, %s, %s, %s, %s)"
     cursor = conn.cursor()
@@ -53,7 +49,6 @@ def insert_data(conn, result):
         for server_versions in result['server_versions']:
             data = (result['endpoint'], result['port'], ALPN, server_versions, timestamp)
             cursor.execute(mySql_insert_query, data)
-            logger.info(f"{cursor.rowcount} Record inserted successfully into quicmap table")
+            #logger.info(f"{cursor.rowcount} Record inserted successfully into quicmap table")
 
     conn.commit()
-    #logger.info("Insert Data Ended")
