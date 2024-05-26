@@ -49,6 +49,6 @@ def insert_data(conn, result):
         for server_versions in result['server_versions']:
             data = (result['endpoint'], result['port'], ALPN, server_versions, timestamp)
             cursor.execute(mySql_insert_query, data)
-            #logger.info(f"{cursor.rowcount} Record inserted successfully into quicmap table")
+            logger.info(f"{data} Record inserted successfully into quicmap table")
 
     conn.commit()
