@@ -1,5 +1,5 @@
 aioquic
 cryptography
 tqdm
-mysql.connector
+mysql-connector-python
 python-dotenv
