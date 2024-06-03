@@ -11,11 +11,8 @@ import warnings
 import ipaddress
 import logging
 import re
-import csv
 import db
 import os.path
-import sys
-import logging.handlers
 import queue
 
 from tqdm.asyncio import tqdm_asyncio
@@ -202,7 +199,7 @@ def parse_arguments():
 def exception_handler(loop, context):
     exception = context["exception"]
     message = context["message"]
-    logger.exception(f"Task failed, msg={message}, exception={exception}")
+    #logger.exception(f"Task failed, msg={message}, exception={exception}")
 
 
 def pretty_print(item: dict):
@@ -240,20 +237,23 @@ async def test_alpn(endpoint: str, port: int, protocols: list) -> dict:
 
     # Find server supported versions
     server_versions = []
-    for event in configuration.quic_logger.to_dict()["traces"][0]["events"]:
-        if (
-            event["name"] == "transport:version_information"
-            and event["data"].get("server_versions") is not None
-        ):
-            server_versions = event["data"].get("server_versions")
-        elif (
-            event["name"] == "transport:packet_received"
-            and len(event["data"].get("frames", [])) > 0
-            and event["data"]["frames"][0].get("frame_type") == "connection_close"
-        ):
-            # Probably application error. Report this ALPN
-            if event["data"]["frames"][0].get("error_code") != 376:
-                success = True
+    try:
+        for event in configuration.quic_logger.to_dict()["traces"][0]["events"]:
+            if (
+                event["name"] == "transport:version_information"
+                and event["data"].get("server_versions") is not None
+            ):
+                server_versions = event["data"].get("server_versions")
+            elif (
+                event["name"] == "transport:packet_received"
+                and len(event["data"].get("frames", [])) > 0
+                and event["data"]["frames"][0].get("frame_type") == "connection_close"
+            ):
+                # Probably application error. Report this ALPN
+                if event["data"]["frames"][0].get("error_code") != 376:
+                    success = True
+    except Exception:
+        pass
 
     return {
         "endpoint": endpoint,
